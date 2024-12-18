@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QUIZZER4</title>
+    <style>
+        *, *::before, *::after{
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            inset: 0;
+        }
+
+        body{
+            font-family: system-ui;
+        }
+
+        button, input, th, td{
+            padding: .5em;
+        }
+
+        img{
+            max-width: 300px;
+            aspect-ratio: 1/1;
+            object-fit: contain;
+        }
+
+        main{
+            display: grid;
+            place-content: center;
+        }
+
+        dialog{
+            margin: auto;
+            padding: 1em;
+
+            div{
+                display: flex;
+            }
+
+            > #answersContainer{
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+       
+
+
+    </style>
+</head>
+<body>
+    <dialog id="startDialog" open>
+        <div>
+            <form method="dialog" onsubmit="gameDialog.show()">
+                <input id="inputName" type="text" placeholder="Enter name" required>
+                <input type="submit" value="Start Game">
+            </form>
+            <button onclick="scoreBoard.show()">Top Scores</button>
+        </div>
+    </dialog>
+    <dialog id="gameDialog" >
+        <h1>Question <span id="questionText"></span></h1>
+        <img id="gameImage">
+        <div id="answersContainer">
+        </div>
+    </dialog>
+    <dialog id="scoreBoard">
+        <table id="tableID" border="1">
+            <tr>
+                <th>NAME</th>
+                <th>SCORE</th>
+                <th>DATE</th>
+            </tr>
+        </table>
+        <button onclick="location.reload()">Close</button>
+    </dialog>
+
+    <script>
+        let fruits;
+        let questionNumber = -1;
+        let currentFruit;
+        let score = 0;
+
+        // 
+        async function refresh(){
+            let response = await fetch("http://localhost/myquizzer4/api/get-fruits.php"); //get fruits
+            let response2 = await fetch("http://localhost/myquizzer4/api/get-scores.php"); // get scores
+            fruits = await response.json();
+            let gameScores = await response2.json();
+            console.log(fruits);
+
+            console.log(gameScores);
+            
+            fruits.sort(() => Math.random() - 0.5);
+            nextQuestion();
+
+            for (const gameScore of gameScores) {
+                tableID.innerHTML += `
+                    <tr>
+                        <td>${gameScore.name}</td>
+                        <td>${gameScore.score}</td>
+                        <td>${gameScore.date}</td>
+                    </tr>
+                `;
+            }
+        }
+
+        function nextQuestion(){
+            questionNumber++;
+            if(questionNumber >= fruits.length){
+            //    endGame();
+               alert(`GAME OVER! Your Score: ${score} / ${fruits.length}`);
+               location.reload();
+               fetch(`http://localhost/myquizzer4/api/save-score.php?name=${inputName.value}&score=${score}`);
+               return; 
+            }
+
+            questionText.innerHTML = questionNumber + 1;
+            currentFruit = fruits.at(questionNumber);
+            console.log(currentFruit);
+
+            gameImage.src = `./images/${currentFruit.name}.png`;
+            generateAnswer();
+            
+        }
+
+        function generateAnswer(){
+            let answers = Array.from(fruits);
+            answers.splice(4);
+            console.log(answers);
+            if(!answers.includes(currentFruit)){
+                answers.pop();
+                answers.push(currentFruit);
+            }
+
+            answers.sort(() => Math.random() - 0.5);
+            answersContainer.innerHTML = '';
+
+            for (const answer of answers) {
+                answersContainer.innerHTML += `
+                    <button onclick="checkAnswer(${answer.id})">${answer.name}</button>
+                `;
+            }
+        }
+
+        function checkAnswer(id){
+            if(currentFruit.id == id){
+                score++;
+                console.log('score:', score);
+            }
+
+            nextQuestion();
+        }
+
+        refresh();
+    </script>
+</body>
+</html>
